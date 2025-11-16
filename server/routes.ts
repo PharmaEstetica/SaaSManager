@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -8,12 +8,39 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import localAuthRoutes from "./localAuth";
+
+// Hybrid auth middleware - supports both local auth and Replit Auth
+function getUserId(req: any): string | undefined {
+  // Try local auth first (session-based)
+  if (req.session?.userId) {
+    return req.session.userId;
+  }
+  // Fall back to Replit Auth (OIDC)
+  if (req.user?.claims?.sub) {
+    return req.user.claims.sub;
+  }
+  return undefined;
+}
+
+// Authentication middleware that works with both auth methods
+function requireAuth(req: any, res: Response, next: NextFunction) {
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: "Não autenticado" });
+  }
+  req.userId = userId; // Normalize userId for route handlers
+  next();
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // ============= AUTH SETUP =============
-  // Setup Replit Auth (adds /api/login, /api/callback, /api/logout routes)
+  // Setup Replit Auth (legacy - adds /api/login, /api/callback, /api/logout routes)
   await setupAuth(app);
+  
+  // Setup Local Auth (new - adds /api/auth/register, /api/auth/login, /api/auth/logout, /api/auth/me)
+  app.use("/api/auth", localAuthRoutes);
   
   // ============= AUTH ROUTES =============
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {

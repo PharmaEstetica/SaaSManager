@@ -8,6 +8,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
 import Transactions from "@/pages/transactions";
 import WeeklyView from "@/pages/weekly-view";
@@ -21,6 +23,7 @@ function AuthenticatedRouter() {
       <Route path="/" component={Dashboard} />
       <Route path="/transactions" component={Transactions} />
       <Route path="/weekly-view" component={WeeklyView} />
+      <Route path="/weekly" component={WeeklyView} />
       <Route path="/reports" component={Reports} />
       <Route path="/categories" component={Categories} />
       <Route path="/settings" component={Settings} />
@@ -33,6 +36,8 @@ function UnauthenticatedRouter() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
       <Route component={NotFound} />
     </Switch>
   );

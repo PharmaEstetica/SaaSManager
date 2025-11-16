@@ -89,7 +89,7 @@ export default function WeeklyView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ 
-        predicate: (query) => query.queryKey[0]?.toString().startsWith('/api/reports/weekly')
+        predicate: (query) => Boolean(query.queryKey[0]?.toString().startsWith('/api/reports/weekly'))
       });
       toast({ title: "Sucesso!", description: "Transação criada com sucesso." });
       handleClose();
@@ -461,22 +461,30 @@ export default function WeeklyView() {
                           <SelectValue placeholder="Selecione uma categoria" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
-                        {categories?.map((category) => (
-                          <SelectItem 
-                            key={category.id} 
-                            value={category.id}
-                            data-testid={`category-option-${category.id}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: category.color || '#10B981' }}
-                              />
-                              {category.name}
-                            </div>
-                          </SelectItem>
-                        ))}
+                      <SelectContent className="z-[100]">
+                        {!categories || categories.length === 0 ? (
+                          <div className="p-4 text-sm text-muted-foreground text-center">
+                            Nenhuma categoria disponível.
+                            <br />
+                            Crie uma categoria primeiro em "Categorias".
+                          </div>
+                        ) : (
+                          categories.map((category) => (
+                            <SelectItem 
+                              key={category.id} 
+                              value={category.id}
+                              data-testid={`category-option-${category.id}`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  className="w-3 h-3 rounded-full" 
+                                  style={{ backgroundColor: category.color || '#10B981' }}
+                                />
+                                {category.name}
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -496,7 +504,7 @@ export default function WeeklyView() {
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="z-[100]">
                         <SelectItem value="paid" data-testid="status-option-paid">Pago</SelectItem>
                         <SelectItem value="unpaid" data-testid="status-option-unpaid">Não Pago</SelectItem>
                       </SelectContent>
@@ -518,7 +526,7 @@ export default function WeeklyView() {
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="z-[100]">
                         <SelectItem value="none" data-testid="recurrence-option-none">Não recorrente</SelectItem>
                         <SelectItem value="weekly" data-testid="recurrence-option-weekly">Semanal</SelectItem>
                         <SelectItem value="biweekly" data-testid="recurrence-option-biweekly">Quinzenal</SelectItem>
