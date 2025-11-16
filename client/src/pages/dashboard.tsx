@@ -10,7 +10,7 @@ import {
   Calendar,
   AlertCircle,
 } from "lucide-react";
-import type { Transaction, Category } from "@shared/schema";
+import type { AdvancedReport, Transaction, Category } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -28,7 +28,15 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [showAccountModal, setShowAccountModal] = useState(false);
 
-  const { data: transactions, isLoading: transactionsLoading } = useQuery<Transaction[]>({
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+
+  const { data: advancedReport, isLoading: reportLoading, error } = useQuery<AdvancedReport>({
+    queryKey: ["/api/reports/advanced", { year: currentYear, month: currentMonth }],
+    retry: false,
+  });
+
+  const { data: transactions } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
     retry: false,
   });
@@ -61,55 +69,16 @@ export default function Dashboard() {
     checkAuth();
   }, [user, authLoading, toast]);
 
-  // Calculate stats
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-
-  const thisMonthTransactions = transactions?.filter((t) => {
-    const date = new Date(t.date);
-    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-  }) || [];
-
-  const lastMonthTransactions = transactions?.filter((t) => {
-    const date = new Date(t.date);
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-    return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
-  }) || [];
-
-  const totalThisMonth = thisMonthTransactions.reduce(
-    (sum, t) => sum + Number(t.amount),
-    0
-  );
-  const totalLastMonth = lastMonthTransactions.reduce(
-    (sum, t) => sum + Number(t.amount),
-    0
-  );
-  const monthlyChange = totalLastMonth > 0
-    ? ((totalThisMonth - totalLastMonth) / totalLastMonth) * 100
-    : 0;
-
-  const paidThisMonth = thisMonthTransactions.filter((t) => t.status === "paid").length;
-  const unpaidThisMonth = thisMonthTransactions.filter((t) => t.status === "unpaid").length;
-
-  // Category breakdown
-  const categoryData = categories
-    ?.map((cat) => {
-      const total = thisMonthTransactions
-        .filter((t) => t.categoryId === cat.id)
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-      return {
-        name: cat.name,
-        value: total,
-        color: cat.color || "#10B981",
-      };
+  // Get recent transactions for display
+  const recentTransactions = transactions
+    ?.filter((t) => {
+      const date = new Date(t.date);
+      return date.getMonth() === currentMonth - 1 && date.getFullYear() === currentYear;
     })
-    .filter((c) => c.value > 0)
-    .sort((a, b) => b.value - a.value) || [];
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5) || [];
 
-  const recentTransactions = thisMonthTransactions.slice(0, 5);
-
-  if (authLoading || transactionsLoading) {
+  if (authLoading || reportLoading || !advancedReport) {
     return (
       <div className="p-6 space-y-6">
         <Skeleton className="h-8 w-64" />
@@ -125,6 +94,25 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  // Extract data from advancedReport
+  const totalThisMonth = advancedReport.overview.totalExpenses;
+  const monthlyChange = advancedReport.trends.monthOverMonthChangePercent;
+  
+  // Calculate paid/unpaid counts from transactions
+  const thisMonthTransactions = transactions?.filter((t) => {
+    const date = new Date(t.date);
+    return date.getMonth() === currentMonth - 1 && date.getFullYear() === currentYear;
+  }) || [];
+  
+  const paidThisMonth = thisMonthTransactions.filter((t) => t.status === "paid").length;
+  const unpaidThisMonth = thisMonthTransactions.filter((t) => t.status === "unpaid").length;
+  
+  const categoryData = advancedReport.categoryRankings.slice(0, 5).map(cat => ({
+    name: cat.categoryName,
+    value: cat.total,
+    color: cat.categoryColor,
+  }));
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">

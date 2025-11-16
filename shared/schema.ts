@@ -140,6 +140,72 @@ export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 
 export type UpdateAccountType = z.infer<typeof updateAccountTypeSchema>;
 
+// Report types
+export interface CategoryRanking {
+  rank: number;
+  categoryId: string | null;
+  categoryName: string;
+  categoryColor: string;
+  total: number;
+  percentage: number;
+  trend: "up" | "down" | "stable";
+  previousMonthTotal: number;
+  changePercent: number;
+}
+
+export interface AdvancedReport {
+  overview: {
+    totalExpenses: number;
+    paidExpenses: number;
+    unpaidExpenses: number;
+    recurringExpenses: number;
+    oneTimeExpenses: number;
+    averageTransactionValue: number;
+  };
+  categoryRankings: CategoryRanking[];
+  trends: {
+    monthOverMonthChange: number;
+    monthOverMonthChangePercent: number;
+    paymentComplianceRate: number;
+    recurringVsOneTimeRatio: number;
+  };
+  kpis: {
+    topSpendingCategory: string;
+    topSpendingCategoryAmount: number;
+    categoryDiversity: number;
+    projectedMonthlyTotal: number;
+  };
+}
+
+export interface MonthlyReport {
+  currentMonthTotal: number;
+  previousMonthTotal: number;
+  monthOverMonthChange: number;
+  monthOverMonthChangePercent: number;
+  paidCount: number;
+  unpaidCount: number;
+  categoryBreakdown: {
+    categoryId: string | null;
+    categoryName: string;
+    categoryColor: string;
+    total: number;
+    percentage: number;
+  }[];
+}
+
+export interface WeeklyData {
+  weeks: {
+    weekNumber: number;
+    startDate: string;
+    endDate: string;
+    total: number;
+    transactionCount: number;
+    transactions: Transaction[];
+  }[];
+  monthTotal: number;
+  averageWeeklySpending: number;
+}
+
 // Default categories for new users
 export const defaultCategories = [
   { name: "Gasto Fixo", color: "#3B82F6", icon: "Home" },

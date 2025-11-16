@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, AlertCircle, Lightbulb } from "lucide-react";
-import type { Transaction, Category } from "@shared/schema";
+import type { AdvancedReport, Transaction } from "@shared/schema";
 import {
   ChartContainer,
   ChartTooltip,
@@ -22,105 +22,81 @@ import {
 } from "recharts";
 
 export default function Reports() {
-  const { data: transactions, isLoading } = useQuery<Transaction[]>({
+  const [selectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear] = useState(new Date().getFullYear());
+
+  const { data: advancedReport, isLoading } = useQuery<AdvancedReport>({
+    queryKey: ["/api/reports/advanced", { year: selectedYear, month: selectedMonth }],
+    retry: false,
+  });
+
+  const { data: transactions } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
     retry: false,
   });
 
-  const { data: categories } = useQuery<Category[]>({
-    queryKey: ["/api/categories"],
-    retry: false,
-  });
-
   const reportData = useMemo(() => {
-    if (!transactions || !categories) return null;
+    if (!advancedReport || !transactions) return null;
 
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    // Use data from advancedReport
+    const currentTotal = advancedReport.overview.totalExpenses;
+    const lastTotal = currentTotal - advancedReport.trends.monthOverMonthChange;
+    const percentChange = advancedReport.trends.monthOverMonthChangePercent;
 
-    // Current month transactions
-    const currentMonthTx = transactions.filter((t) => {
-      const date = new Date(t.date);
-      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-    });
-
-    // Last month transactions
-    const lastMonthTx = transactions.filter((t) => {
-      const date = new Date(t.date);
-      return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
-    });
-
-    const currentTotal = currentMonthTx.reduce((sum, t) => sum + Number(t.amount), 0);
-    const lastTotal = lastMonthTx.reduce((sum, t) => sum + Number(t.amount), 0);
-    const percentChange = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal) * 100 : 0;
-
-    // Category comparison
-    const categoryComparison = categories.map((cat) => {
-      const currentCatTotal = currentMonthTx
-        .filter((t) => t.categoryId === cat.id)
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-      const lastCatTotal = lastMonthTx
-        .filter((t) => t.categoryId === cat.id)
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-      const catChange = lastCatTotal > 0
-        ? ((currentCatTotal - lastCatTotal) / lastCatTotal) * 100
-        : 0;
-
-      return {
-        name: cat.name,
-        current: currentCatTotal,
-        last: lastCatTotal,
-        change: catChange,
-        color: cat.color,
-      };
-    }).filter((c) => c.current > 0 || c.last > 0);
+    // Category comparison from rankings
+    const categoryComparison = advancedReport.categoryRankings.map((cat) => ({
+      name: cat.categoryName,
+      current: cat.total,
+      last: cat.previousMonthTotal,
+      change: cat.changePercent,
+      color: cat.categoryColor,
+    }));
 
     // Ranking - top spending categories
-    const ranking = categoryComparison
-      .sort((a, b) => b.current - a.current)
-      .slice(0, 5);
+    const ranking = advancedReport.categoryRankings.slice(0, 5).map((cat) => ({
+      name: cat.categoryName,
+      current: cat.total,
+      last: cat.previousMonthTotal,
+      change: cat.changePercent,
+      color: cat.categoryColor,
+    }));
 
     // Monthly evolution (last 6 months)
     const monthlyEvolution = [];
     for (let i = 5; i >= 0; i--) {
-      const targetMonth = currentMonth - i;
-      const targetYear = currentYear + Math.floor(targetMonth / 12);
-      const adjustedMonth = ((targetMonth % 12) + 12) % 12;
+      // Create a Date object for the target month (i months before selectedMonth)
+      const targetDate = new Date(selectedYear, selectedMonth - 1 - i, 1);
+      const targetMonth = targetDate.getMonth();
+      const targetYear = targetDate.getFullYear();
 
       const monthTx = transactions.filter((t) => {
         const date = new Date(t.date);
-        return date.getMonth() === adjustedMonth && date.getFullYear() === targetYear;
+        return date.getMonth() === targetMonth && date.getFullYear() === targetYear;
       });
 
       const total = monthTx.reduce((sum, t) => sum + Number(t.amount), 0);
 
       monthlyEvolution.push({
-        month: new Date(targetYear, adjustedMonth).toLocaleDateString("pt-BR", {
+        month: targetDate.toLocaleDateString("pt-BR", {
           month: "short",
         }),
         value: total,
       });
     }
 
-    // Recommendations
-    const recommendations = [];
-    
-    // Top 3 increased categories
+    // Recommendations - top 3 increased categories
     const increased = categoryComparison
       .filter((c) => c.change > 10)
       .sort((a, b) => b.change - a.change)
       .slice(0, 3);
 
-    increased.forEach((cat) => {
+    const recommendations = increased.map((cat) => {
       const potentialSaving = cat.current * 0.1; // 10% reduction
-      recommendations.push({
+      return {
         category: cat.name,
         message: `Você gastou ${cat.change.toFixed(1)}% a mais em ${cat.name} este mês.`,
         suggestion: `Se reduzir 10%, você economiza R$ ${potentialSaving.toFixed(2)}/mês.`,
-      });
+      };
     });
 
     return {
@@ -132,7 +108,7 @@ export default function Reports() {
       monthlyEvolution,
       recommendations,
     };
-  }, [transactions, categories]);
+  }, [advancedReport, transactions, selectedMonth, selectedYear]);
 
   if (isLoading || !reportData) {
     return (
