@@ -1,6 +1,7 @@
 import { 
   type User, 
-  type InsertUser, 
+  type InsertUser,
+  type UpsertUser,
   type Category, 
   type InsertCategory,
   type Transaction,
@@ -25,6 +26,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
   updateAccountType(userId: string, data: UpdateAccountType): Promise<User | undefined>;
   
   // Categories
@@ -160,6 +162,21 @@ export class DatabaseStorage implements IStorage {
     // Create default categories for new user
     await this.createDefaultCategories(user.id);
     
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
     return user;
   }
 
