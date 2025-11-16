@@ -140,16 +140,20 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Logout endpoint
-router.post("/logout", (req, res) => {
-  req.session.destroy((err) => {
+// Logout endpoint (accepts both GET and POST, returns JSON)
+const logoutHandler = (req: any, res: any) => {
+  req.session.destroy((err: any) => {
     if (err) {
       return res.status(500).json({ message: "Erro ao fazer logout" });
     }
     res.clearCookie("connect.sid");
-    res.json({ message: "Logout realizado com sucesso" });
+    // Return JSON success - let frontend handle redirect
+    res.json({ message: "Logout realizado com sucesso", redirect: "/" });
   });
-});
+};
+
+router.post("/logout", logoutHandler);
+router.get("/logout", logoutHandler);
 
 // Get current user endpoint
 router.get("/me", async (req, res) => {

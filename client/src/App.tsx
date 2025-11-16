@@ -21,6 +21,7 @@ function AuthenticatedRouter() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/transactions" component={Transactions} />
       <Route path="/weekly-view" component={WeeklyView} />
       <Route path="/weekly" component={WeeklyView} />

@@ -10,27 +10,55 @@ import { z } from "zod";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import localAuthRoutes from "./localAuth";
 
-// Hybrid auth middleware - supports both local auth and Replit Auth
-function getUserId(req: any): string | undefined {
-  // Try local auth first (session-based)
+// Hybrid auth middleware - supports both local auth (session) and Replit Auth (OIDC)
+// Checks both methods and sets req.userId if either is valid
+async function hybridAuth(req: any, res: Response, next: NextFunction) {
+  // Method 1: Check local auth (session-based)
   if (req.session?.userId) {
-    return req.session.userId;
+    req.userId = req.session.userId;
+    return next();
   }
-  // Fall back to Replit Auth (OIDC)
-  if (req.user?.claims?.sub) {
-    return req.user.claims.sub;
+  
+  // Method 2: Check Replit Auth (OIDC via passport)
+  // req.isAuthenticated() checks if passport session exists
+  // req.user populated by passport deserializeUser
+  if (req.isAuthenticated() && req.user?.claims?.sub) {
+    // Verify token hasn't expired (Replit Auth specific)
+    const user = req.user as any;
+    const now = Math.floor(Date.now() / 1000);
+    
+    if (user.expires_at && now > user.expires_at) {
+      // Token expired, try to refresh
+      const refreshToken = user.refresh_token;
+      if (refreshToken) {
+        try {
+          const { getOidcConfig } = await import("./replitAuth");
+          const config = await getOidcConfig();
+          const client = await import("openid-client");
+          const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+          
+          // Update session with new tokens
+          user.claims = tokenResponse.claims();
+          user.access_token = tokenResponse.access_token;
+          user.refresh_token = tokenResponse.refresh_token;
+          user.expires_at = user.claims?.exp;
+          
+          req.userId = user.claims.sub;
+          return next();
+        } catch (error) {
+          return res.status(401).json({ error: "Token expirado e não pôde ser renovado" });
+        }
+      }
+      return res.status(401).json({ error: "Token expirado" });
+    }
+    
+    // Token still valid
+    req.userId = user.claims.sub;
+    return next();
   }
-  return undefined;
-}
-
-// Authentication middleware that works with both auth methods
-function requireAuth(req: any, res: Response, next: NextFunction) {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ error: "Não autenticado" });
-  }
-  req.userId = userId; // Normalize userId for route handlers
-  next();
+  
+  // No valid authentication found
+  return res.status(401).json({ error: "Não autenticado" });
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -43,10 +71,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/auth", localAuthRoutes);
   
   // ============= AUTH ROUTES =============
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Legacy Replit Auth endpoint (kept for backward compatibility)
+  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await storage.getUser(req.userId);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -55,14 +83,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ============= ACCOUNT SETTINGS =============
-  app.patch("/api/account-settings", async (req, res) => {
+  app.patch("/api/account-settings", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
       const data = updateAccountTypeSchema.parse(req.body);
-      const user = await storage.updateAccountType(req.user.claims.sub, data);
+      const user = await storage.updateAccountType(req.userId, data);
       
       if (!user) {
         return res.status(404).json({ error: "Usuário não encontrado" });
@@ -79,13 +103,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ============= CATEGORIES =============
-  app.get("/api/categories", async (req, res) => {
+  app.get("/api/categories", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
-      const categories = await storage.getCategories(req.user.claims.sub);
+      const categories = await storage.getCategories(req.userId);
       res.json(categories);
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -93,13 +113,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/categories/:id", async (req, res) => {
+  app.get("/api/categories/:id", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
-      const category = await storage.getCategory(req.params.id, req.user.claims.sub);
+      const category = await storage.getCategory(req.params.id, req.userId);
       
       if (!category) {
         return res.status(404).json({ error: "Categoria não encontrada" });
@@ -112,15 +128,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/categories", async (req, res) => {
+  app.post("/api/categories", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
       const data = insertCategorySchema.parse({
         ...req.body,
-        userId: req.user.claims.sub,
+        userId: req.userId,
       });
       
       const category = await storage.createCategory(data);
@@ -134,14 +146,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/categories/:id", async (req, res) => {
+  app.patch("/api/categories/:id", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
       const data = insertCategorySchema.partial().omit({ userId: true, isDefault: true }).parse(req.body);
-      const category = await storage.updateCategory(req.params.id, req.user.claims.sub, data);
+      const category = await storage.updateCategory(req.params.id, req.userId, data);
       
       if (!category) {
         return res.status(404).json({ error: "Categoria não encontrada" });
@@ -157,13 +165,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/categories/:id", async (req, res) => {
+  app.delete("/api/categories/:id", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
-      const success = await storage.deleteCategory(req.params.id, req.user.claims.sub);
+      const success = await storage.deleteCategory(req.params.id, req.userId);
       
       if (!success) {
         return res.status(404).json({ error: "Categoria não encontrada ou não pode ser excluída" });
@@ -177,12 +181,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ============= TRANSACTIONS =============
-  app.get("/api/transactions", async (req, res) => {
+  app.get("/api/transactions", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
       const filters: any = {};
       
       if (req.query.categoryId) {
@@ -198,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.endDate = new Date(req.query.endDate as string);
       }
       
-      const transactions = await storage.getTransactions(req.user.claims.sub, filters);
+      const transactions = await storage.getTransactions(req.userId, filters);
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);
@@ -206,13 +206,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/transactions/:id", async (req, res) => {
+  app.get("/api/transactions/:id", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
-      const transaction = await storage.getTransaction(req.params.id, req.user.claims.sub);
+      const transaction = await storage.getTransaction(req.params.id, req.userId);
       
       if (!transaction) {
         return res.status(404).json({ error: "Transação não encontrada" });
@@ -225,15 +221,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/transactions", async (req, res) => {
+  app.post("/api/transactions", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
       const data = insertTransactionSchema.parse({
         ...req.body,
-        userId: req.user.claims.sub,
+        userId: req.userId,
       });
       
       const transaction = await storage.createTransaction(data);
@@ -247,19 +239,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.patch("/api/transactions/:id", async (req, res) => {
+  app.patch("/api/transactions/:id", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
       const data = insertTransactionSchema.partial().omit({ 
         userId: true,
         isRecurring: true,
         recurrenceType: true,
         recurrenceDay: true
       }).parse(req.body);
-      const transaction = await storage.updateTransaction(req.params.id, req.user.claims.sub, data);
+      const transaction = await storage.updateTransaction(req.params.id, req.userId, data);
       
       if (!transaction) {
         return res.status(404).json({ error: "Transação não encontrada" });
@@ -275,13 +263,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/transactions/:id", async (req, res) => {
+  app.delete("/api/transactions/:id", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
-      const success = await storage.deleteTransaction(req.params.id, req.user.claims.sub);
+      const success = await storage.deleteTransaction(req.params.id, req.userId);
       
       if (!success) {
         return res.status(404).json({ error: "Transação não encontrada" });
@@ -295,14 +279,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ============= RECURRENCE =============
-  app.post("/api/transactions/process-recurrence", async (req, res) => {
+  app.post("/api/transactions/process-recurrence", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
       const targetDate = req.body.targetDate ? new Date(req.body.targetDate) : new Date();
-      const createdCount = await storage.processRecurringTransactions(req.user.claims.sub, targetDate);
+      const createdCount = await storage.processRecurringTransactions(req.userId, targetDate);
       
       res.json({ 
         success: true, 
@@ -315,13 +295,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/transactions/recurring", async (req, res) => {
+  app.get("/api/transactions/recurring", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
-      const recurringTransactions = await storage.getRecurringTransactions(req.user.claims.sub);
+      const recurringTransactions = await storage.getRecurringTransactions(req.userId);
       res.json(recurringTransactions);
     } catch (error) {
       console.error("Error fetching recurring transactions:", error);
@@ -330,16 +306,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ============= REPORTS =============
-  app.get("/api/reports/monthly", async (req, res) => {
+  app.get("/api/reports/monthly", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
       const year = parseInt(req.query.year as string) || new Date().getFullYear();
       const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
       
-      const report = await storage.getMonthlyReport(req.user.claims.sub, year, month);
+      const report = await storage.getMonthlyReport(req.userId, year, month);
       res.json(report);
     } catch (error) {
       console.error("Error generating monthly report:", error);
@@ -347,16 +319,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/reports/weekly", async (req, res) => {
+  app.get("/api/reports/weekly", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
       const year = parseInt(req.query.year as string) || new Date().getFullYear();
       const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
       
-      const weeklyData = await storage.getWeeklyData(req.user.claims.sub, year, month);
+      const weeklyData = await storage.getWeeklyData(req.userId, year, month);
       res.json(weeklyData);
     } catch (error) {
       console.error("Error generating weekly report:", error);
@@ -364,16 +332,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/reports/advanced", async (req, res) => {
+  app.get("/api/reports/advanced", hybridAuth, async (req: any, res) => {
     try {
-      if (!req.user?.claims?.sub) {
-        return res.status(401).json({ error: "Não autenticado" });
-      }
-      
       const year = parseInt(req.query.year as string) || new Date().getFullYear();
       const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
       
-      const advancedReport = await storage.getAdvancedReport(req.user.claims.sub, year, month);
+      const advancedReport = await storage.getAdvancedReport(req.userId, year, month);
       res.json(advancedReport);
     } catch (error) {
       console.error("Error generating advanced report:", error);

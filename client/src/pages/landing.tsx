@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useLocation } from "wouter";
 import { 
   TrendingUp, 
   PieChart, 
@@ -7,10 +8,13 @@ import {
   Shield,
   Sparkles,
   BarChart3,
-  ArrowRight
+  ArrowRight,
+  LogIn
 } from "lucide-react";
 
 export default function Landing() {
+  const [_, setLocation] = useLocation();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-card">
       {/* Hero Section */}
@@ -37,11 +41,21 @@ export default function Landing() {
             <Button 
               size="lg" 
               className="w-full sm:w-auto"
-              onClick={() => window.location.href = "/api/login"}
-              data-testid="button-login"
+              onClick={() => setLocation("/register")}
+              data-testid="button-register-cta"
             >
-              Começar Agora
+              Criar Conta Grátis
               <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setLocation("/login")}
+              data-testid="button-login-cta"
+            >
+              <LogIn className="mr-2 w-4 h-4" />
+              Entrar
             </Button>
           </div>
         </div>
