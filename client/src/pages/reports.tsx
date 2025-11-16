@@ -26,7 +26,7 @@ export default function Reports() {
   const [selectedYear] = useState(new Date().getFullYear());
 
   const { data: advancedReport, isLoading } = useQuery<AdvancedReport>({
-    queryKey: ['/api/reports/advanced', { year: selectedYear, month: selectedMonth }],
+    queryKey: [`/api/reports/advanced?year=${selectedYear}&month=${selectedMonth}`],
     retry: false,
   });
 

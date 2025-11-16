@@ -6,32 +6,32 @@ Comprehensive financial management platform with premium dark-mode design inspir
 **Current State**: Full MVP implementation complete with frontend-backend integration, authentication, and all core features operational.
 
 ## Recent Changes (November 16, 2025)
-- **CRITICAL FIX - Authentication**: All backend routes now use `req.user.claims.sub` (Replit Auth OIDC standard) instead of `req.user.id`
-  - Fixed 401 Unauthorized errors across all API endpoints
-  - Categories, transactions, and reports now load correctly
-  - Authentication consistent across entire application
-- **CRITICAL FIX - TanStack Query Keys**: Fixed query key format in 3 files to use structured format
-  - Corrected to: `['/api/reports/weekly', { year, month }]` format
-  - Prevents breaking default fetcher which expects structured keys
-  - Affects: weekly-view.tsx, reports.tsx, dashboard.tsx
-- **Calendar-Based Weekly View Implemented**:
-  - Full month calendar grid with clickable days (1-31)
-  - Click any day to open transaction dialog with date pre-filled
+- **✅ TASK 1 COMPLETED - Calendar-Based Weekly View**:
+  - Full month calendar with **dynamic grid** (28/35/42 cells based on month layout)
+  - Leading fillers for days before month start
+  - Trailing fillers ensuring complete weeks (`while (days.length % 7 !== 0)`)
+  - Clickable days opening transaction dialog with pre-selected date
   - Today's date highlighted with ring border
-  - Days with transactions show count badge and total amount
+  - Transaction count badges and daily totals
   - Transaction previews (up to 2) with category color indicators
-  - Month navigation (previous/next) with year rollover
-  - Timezone-safe date handling using YYYY-MM-DD strings
-- **Transaction Creation Dialog Fixed**:
-  - Frontend uses `insertTransactionSchema.omit({ userId: true })` 
-  - Backend adds userId from `req.user.claims.sub` automatically
-  - Added `isRecurring` field to payload based on recurrenceType
-  - Fixed date normalization to strip original form field before spread
-  - Category refetch happens in handleDayClick (removed redundant useEffect)
-- **Cache Invalidation Simplified**: Direct queryKey invalidation for `/api/reports/weekly`
-- **NaN Protection**: Robust Number() coercion for monthTotal and transactionCount
-- **Test IDs Added**: All select options now have data-testid for E2E testing
-- **Security Hardened**: Backend validates and omits sensitive fields from PATCH payloads
+  - Month navigation with year rollover
+  - All interactive elements have `data-testid` attributes
+- **CRITICAL FIX - TanStack Query Keys**: Changed from structured format to query strings
+  - From: `['/api/reports/weekly', { year, month }]` 
+  - To: `['/api/reports/weekly?year=${year}&month=${month}']`
+  - **Reason**: Default fetcher uses `queryKey.join("/")` which doesn't handle objects
+  - Fixed `[object Object]` appearing in API URLs
+  - Affects: weekly-view.tsx, reports.tsx, dashboard.tsx
+- **Cache Invalidation Updated**: Now uses predicate for partial matching
+  - `queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().startsWith('/api/reports/weekly') })`
+- **Transaction Creation Dialog Finalized**:
+  - FormSchema uses `insertTransactionSchema.omit({ userId: true })`
+  - Backend derives userId from `req.user.claims.sub`
+  - Date normalization: `const { date: _, ...restData }` before spread
+  - `isRecurring` field computed from recurrenceType
+- **UseMutation Syntax Fixed**: onSuccess/onError callbacks properly structured
+- **Authentication Stable**: All 16 backend routes use `req.user.claims.sub` (Replit Auth OIDC)
+- **Security**: Backend PATCH endpoints omit sensitive fields (userId, isRecurring, recurrenceType)
 
 ## Project Architecture
 

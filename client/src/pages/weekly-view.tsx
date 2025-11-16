@@ -68,7 +68,7 @@ export default function WeeklyView() {
   });
 
   const { data: weeklyData, isLoading} = useQuery<WeeklyData>({
-    queryKey: ['/api/reports/weekly', { year: selectedYear, month: selectedMonth }],
+    queryKey: [`/api/reports/weekly?year=${selectedYear}&month=${selectedMonth}`],
     retry: false,
   });
 
@@ -88,7 +88,9 @@ export default function WeeklyView() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/reports/weekly"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => query.queryKey[0]?.toString().startsWith('/api/reports/weekly')
+      });
       toast({ title: "Sucesso!", description: "Transação criada com sucesso." });
       handleClose();
     },
@@ -195,8 +197,8 @@ export default function WeeklyView() {
       days.push(day);
     }
     
-    // Add trailing empty cells to complete full weeks (35 cells total for 5 weeks)
-    while (days.length < 35) {
+    // Add trailing empty cells to complete full weeks (ensures multiple of 7)
+    while (days.length % 7 !== 0) {
       days.push(null);
     }
     
