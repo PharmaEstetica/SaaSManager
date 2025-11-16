@@ -36,6 +36,7 @@ import { insertTransactionSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { z } from "zod";
+import { formatCurrencyInput, parseCurrencyInput } from "@/lib/formatCurrency";
 
 const formSchema = insertTransactionSchema
   .omit({ userId: true })  // Backend adds userId from req.user.claims.sub
@@ -160,7 +161,7 @@ export default function WeeklyView() {
     
     const payload = {
       ...restData,
-      amount: parseFloat(data.amount),
+      amount: parseCurrencyInput(data.amount),
       date: localDate.toISOString(),
       isRecurring: data.recurrenceType !== "none",
       recurrenceDay: data.recurrenceType === "monthly" || data.recurrenceType === "quarterly" 
@@ -418,11 +419,18 @@ export default function WeeklyView() {
                     <FormLabel>Valor (R$)</FormLabel>
                     <FormControl>
                       <Input 
-                        type="number" 
-                        step="0.01"
-                        placeholder="0.00"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="46.000.00"
                         data-testid="input-transaction-amount"
-                        {...field} 
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          const formatted = formatCurrencyInput(e.target.value);
+                          field.onChange(formatted);
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
                       />
                     </FormControl>
                     <FormMessage />

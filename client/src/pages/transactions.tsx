@@ -46,6 +46,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
+import { formatCurrencyInput, parseCurrencyInput, formatCurrencyDisplay } from "@/lib/formatCurrency";
 
 const formSchema = insertTransactionSchema.extend({
   categoryId: z.string().min(1, "Selecione uma categoria"),
@@ -93,6 +94,9 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => Boolean(query.queryKey[0]?.toString().startsWith('/api/reports'))
+      });
       toast({ title: "Sucesso!", description: "Transação criada com sucesso." });
       handleClose();
     },
@@ -107,6 +111,9 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => Boolean(query.queryKey[0]?.toString().startsWith('/api/reports'))
+      });
       toast({ title: "Sucesso!", description: "Transação atualizada com sucesso." });
       handleClose();
     },
@@ -121,6 +128,9 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => Boolean(query.queryKey[0]?.toString().startsWith('/api/reports'))
+      });
       toast({ title: "Sucesso!", description: "Transação excluída com sucesso." });
     },
     onError: () => {
@@ -137,9 +147,8 @@ export default function Transactions() {
   const handleSubmit = (values: FormValues) => {
     const data = {
       ...values,
-      amount: parseFloat(values.amount),
+      amount: parseCurrencyInput(values.amount),
       isRecurring: values.recurrenceType !== "none",
-      userId: user?.sub || "",
     };
 
     if (editingTransaction) {
@@ -151,9 +160,10 @@ export default function Transactions() {
 
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
+    const amountInCents = Math.round(Number(transaction.amount) * 100);
     form.reset({
       title: transaction.title,
-      amount: transaction.amount.toString(),
+      amount: formatCurrencyInput(amountInCents.toString()),
       date: new Date(transaction.date).toISOString().split("T")[0],
       categoryId: transaction.categoryId || "",
       status: transaction.status as "paid" | "unpaid",
@@ -224,7 +234,20 @@ export default function Transactions() {
                       <FormItem>
                         <FormLabel>Valor (R$) *</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} data-testid="input-amount" />
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="46.000.00"
+                            value={field.value || ''}
+                            onChange={(e) => {
+                              const formatted = formatCurrencyInput(e.target.value);
+                              field.onChange(formatted);
+                            }}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
+                            data-testid="input-amount"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -237,7 +260,12 @@ export default function Transactions() {
                       <FormItem>
                         <FormLabel>Data *</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-date" />
+                          <Input 
+                            type="date" 
+                            {...field}
+                            value={typeof field.value === 'string' ? field.value : new Date(field.value).toISOString().split('T')[0]}
+                            data-testid="input-date" 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -274,7 +302,7 @@ export default function Transactions() {
                   render={({ field}) => (
                     <FormItem>
                       <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || "unpaid"}>
                         <FormControl>
                           <SelectTrigger data-testid="select-status">
                             <SelectValue />
@@ -295,7 +323,7 @@ export default function Transactions() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Recorrência</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || "none"}>
                         <FormControl>
                           <SelectTrigger data-testid="select-recurrence">
                             <SelectValue />
@@ -404,12 +432,12 @@ export default function Transactions() {
                   <TableRow key={transaction.id} data-testid={`row-transaction-${transaction.id}`}>
                     <TableCell className="font-medium" data-testid={`text-title-${transaction.id}`}>{transaction.title}</TableCell>
                     <TableCell data-testid={`text-category-${transaction.id}`}>
-                      <Badge variant="outline" style={{ borderColor: category?.color }}>
+                      <Badge variant="outline" style={{ borderColor: category?.color || undefined }}>
                         {category?.name || "Sem categoria"}
                       </Badge>
                     </TableCell>
                     <TableCell data-testid={`text-date-${transaction.id}`}>{new Date(transaction.date).toLocaleDateString("pt-BR")}</TableCell>
-                    <TableCell className="font-semibold" data-testid={`text-amount-${transaction.id}`}>R$ {Number(transaction.amount).toFixed(2)}</TableCell>
+                    <TableCell className="font-semibold" data-testid={`text-amount-${transaction.id}`}>{formatCurrencyDisplay(Number(transaction.amount))}</TableCell>
                     <TableCell data-testid={`badge-status-${transaction.id}`}>
                       <Badge variant={transaction.status === "paid" ? "default" : "secondary"}>
                         {transaction.status === "paid" ? "Pago" : "Pendente"}
