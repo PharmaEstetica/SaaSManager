@@ -1,0 +1,105 @@
+Quero criar um SaaS no Replit com as seguintes funcionalidades e estrutura. Por favor, gere para mim a arquitetura, os arquivos base, o boilerplate, e o passo a passo de implementação.
+
+📌 OBJETIVO DO SAAS
+
+Um sistema de organização financeira que funciona em dois modos:
+
+Financeiro pessoal
+Financeiro empresarial (PJ)
+O usuário cria uma conta, faz login e escolhe se o controle financeiro será pessoal ou empresarial.
+
+📌 FUNCIONALIDADES ESSENCIAIS
+
+Categorias e Filtros
+O usuário pode criar categorias/filtros próprios.
+Pode excluir filtros criados.
+Existem filtros padrões como:
+
+“Gasto fixo”
+“Folha de pagamento” (para PJ)
+“Assinaturas”
+“Contas recorrentes”
+etc.
+Gestão de gastos
+Cada lançamento terá:
+
+Título
+Data/PAYDAY
+Valor
+Status (Pago / Não pago)
+Categoria/filtro selecionado pelo usuário
+Observações opcionais
+É importante suportar:
+
+Gastos fixos com valor variável (ex.: energia que muda mas vence sempre no mesmo dia)
+Repetições mensais fixas
+Pagamentos semanais ou quinzenais
+📌 TABELAS EM SEMANAS (IMPORTANTE)
+
+Eu vou enviar uma print de uma planilha Excel apenas para referência da estrutura, NÃO do visual.
+Quero que você use essa referência para criar um módulo no SaaS com visão semanal, assim:
+
+Semana 1
+Semana 2
+Semana 3
+Semana 4
+Semana 5 (quando existir)
+Cada semana mostrará os lançamentos correspondentes aos dias daquela semana.
+O objetivo disso é permitir visualizar:
+
+Gastos recorrentes que acontecem sempre no mesmo dia do mês
+Pagamentos que sempre caem na mesma semana
+Agrupamento mais realista de custos empresariais
+A tabela da planilha NÃO deve ser copiada visualmente, é apenas inspiração para a estrutura da lógica.
+
+📌 RELATÓRIOS
+
+O SaaS precisa gerar:
+
+Comparação entre mês atual e mês anterior
+Quanto aumentou/diminuiu (valor e %) em cada categoria
+Gráficos simples (pizza, barras, evolução mensal)
+Ranking das categorias onde o usuário mais gasta
+Recomendações básicas como:
+
+“Você gastou X% a mais em combustível”
+“Se reduzir categoria Y em 10%, economiza R$ Z por mês”
+A ideia é ser simples, acessível e visual.
+
+📌 INTERFACE
+
+Na lateral esquerda haverá uma barra com:
+
+Dashboard
+Transações
+Relatórios
+Filtros/Categorias
+Configurações
+Nada do layout deve seguir o tema feio da planilha, OK?
+Tudo deve ser moderno, clean e responsivo.
+
+📌 STACK SUGERIDA
+
+Pode propor a melhor, mas estou considerando:
+
+Back-end: Node.js com Express ou Python com Flask
+Front-end: React ou HTML + JS
+Banco: SQLite ou PostgreSQL
+Autenticação: JWT ou Clerk/Supabase Auth
+📌 O QUE QUERO QUE VOCÊ ME ENTREGUE
+
+Arquitetura do projeto
+Estrutura de pastas
+Arquivos iniciais (boilerplate)
+Models do banco
+Rotas essenciais
+Telas base
+Função para cálculo das semanas
+Função para gerar os relatórios comparativos
+Qualquer lógica necessária para suportar repetição mensal / gastos fixos variáveis
+Também quero que você me diga exatamente o que devo copiar e colar no Replit para criar o projeto corretamente.
+Obrigado!”
+
+usa esse site para copiar o estilo de letra animações e cores vou mandar uma print tb para vc ber como é lindo.
+
+https://salmon-points-269320.framer.app
