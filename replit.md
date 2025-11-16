@@ -3,9 +3,30 @@
 ## Overview
 Comprehensive financial management platform with premium dark-mode design inspired by Cryptix. Supports both Personal and Business (PJ) financial management modes with advanced transaction management, recurring expenses, customizable categories, innovative weekly view, and comparative reports with charts.
 
-**Current State**: Full MVP implementation complete with frontend-backend integration, authentication, and all core features operational.
+**Current State**: Full MVP with **Hybrid Authentication System** (Local + Replit Auth) complete and production-ready. All features operational with comprehensive e2e testing.
 
 ## Recent Changes (November 16, 2025)
+- **✅ HYBRID AUTHENTICATION SYSTEM IMPLEMENTED**:
+  - **Local Auth**: Email/password registration and login with bcrypt hashing (10 salt rounds)
+  - **Session Management**: PostgreSQL session store (7-day TTL) with explicit req.session.save()
+  - **Hybrid Middleware**: `hybridAuth` supports both session.userId and Replit OIDC req.user.claims.sub
+  - **Token Refresh**: Automatic OIDC token refresh when expired
+  - **Secure Cookies**: httpOnly, secure, SameSite settings
+  - **Route Protection**: Frontend redirects to /login for unauthenticated access to protected routes
+  - **Logout**: Returns JSON response for frontend-controlled navigation
+  - **Default Categories**: 9 categories auto-created on registration
+  
+- **✅ FRONTEND AUTH PAGES**:
+  - /register - User registration with auto-login after success
+  - /login - User login with session persistence
+  - UnauthenticatedRouter - Redirects protected routes to /login
+  - AuthenticatedRouter - Renders sidebar + protected pages
+
+- **✅ BUG FIXES**:
+  - Added ChartContainer wrapper to all charts (dashboard.tsx, reports.tsx)
+  - Fixed session persistence with req.session.save() callback
+  - Fixed route protection redirects (no more 404 on protected routes)
+  - Fixed logout to return JSON instead of 302 redirect
 - **✅ TASK 1 COMPLETED - Calendar-Based Weekly View**:
   - Full month calendar with **dynamic grid** (28/35/42 cells based on month layout)
   - Leading fillers for days before month start

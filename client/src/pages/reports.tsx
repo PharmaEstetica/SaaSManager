@@ -168,16 +168,18 @@ export default function Reports() {
           <h3 className="text-lg font-semibold mb-4">Comparação por Categoria</h3>
           {reportData.categoryComparison.length > 0 ? (
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={reportData.categoryComparison}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
-                  <YAxis fontSize={12} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="last" fill="hsl(var(--muted))" name={lastMonthName} />
-                  <Bar dataKey="current" fill="hsl(var(--primary))" name={currentMonthName} />
-                </BarChart>
-              </ResponsiveContainer>
+              <ChartContainer config={{}}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={reportData.categoryComparison}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
+                    <YAxis fontSize={12} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="last" fill="hsl(var(--muted))" name={lastMonthName} />
+                    <Bar dataKey="current" fill="hsl(var(--primary))" name={currentMonthName} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </div>
           ) : (
             <div className="h-80 flex items-center justify-center text-muted-foreground">
@@ -192,21 +194,23 @@ export default function Reports() {
           <h3 className="text-lg font-semibold mb-4">Evolução Mensal (Últimos 6 Meses)</h3>
           {reportData.monthlyEvolution.length > 0 ? (
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={reportData.monthlyEvolution}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                  <XAxis dataKey="month" fontSize={12} />
-                  <YAxis fontSize={12} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    dot={{ fill: "hsl(var(--primary))", r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <ChartContainer config={{}}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={reportData.monthlyEvolution}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <XAxis dataKey="month" fontSize={12} />
+                    <YAxis fontSize={12} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </div>
           ) : (
             <div className="h-80 flex items-center justify-center text-muted-foreground">

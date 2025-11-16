@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -39,6 +39,28 @@ function UnauthenticatedRouter() {
       <Route path="/" component={Landing} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      {/* Redirect all other routes (protected routes) to login */}
+      <Route path="/dashboard">
+        <Redirect to="/login" />
+      </Route>
+      <Route path="/transactions">
+        <Redirect to="/login" />
+      </Route>
+      <Route path="/weekly-view">
+        <Redirect to="/login" />
+      </Route>
+      <Route path="/weekly">
+        <Redirect to="/login" />
+      </Route>
+      <Route path="/reports">
+        <Redirect to="/login" />
+      </Route>
+      <Route path="/categories">
+        <Redirect to="/login" />
+      </Route>
+      <Route path="/settings">
+        <Redirect to="/login" />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

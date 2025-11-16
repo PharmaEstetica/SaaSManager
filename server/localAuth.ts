@@ -88,12 +88,20 @@ router.post("/register", async (req, res) => {
       }))
     );
     
-    // Set session
+    // Set session and save before responding
     req.session.userId = newUser.id;
     
-    // Return user without password
-    const { password: _, ...userWithoutPassword } = newUser;
-    res.status(201).json(userWithoutPassword);
+    // Save session to store before sending response
+    req.session.save((err: any) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ message: "Erro ao salvar sessão" });
+      }
+      
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = newUser;
+      res.status(201).json(userWithoutPassword);
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: error.errors[0].message });
@@ -125,12 +133,20 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Email ou senha incorretos" });
     }
     
-    // Set session
+    // Set session and save before responding
     req.session.userId = user.id;
     
-    // Return user without password
-    const { password: _, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
+    // Save session to store before sending response
+    req.session.save((err: any) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ message: "Erro ao salvar sessão" });
+      }
+      
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: error.errors[0].message });

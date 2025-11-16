@@ -72,7 +72,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // ============= AUTH ROUTES =============
   // Legacy Replit Auth endpoint (kept for backward compatibility)
-  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
+  app.get('/api/auth/user', hybridAuth, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.userId);
       res.json(user);
