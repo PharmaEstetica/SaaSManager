@@ -30,12 +30,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= ACCOUNT SETTINGS =============
   app.patch("/api/account-settings", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
       const data = updateAccountTypeSchema.parse(req.body);
-      const user = await storage.updateAccountType(req.user.id, data);
+      const user = await storage.updateAccountType(req.user.claims.sub, data);
       
       if (!user) {
         return res.status(404).json({ error: "Usuário não encontrado" });
@@ -54,11 +54,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= CATEGORIES =============
   app.get("/api/categories", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
-      const categories = await storage.getCategories(req.user.id);
+      const categories = await storage.getCategories(req.user.claims.sub);
       res.json(categories);
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -68,11 +68,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/categories/:id", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
-      const category = await storage.getCategory(req.params.id, req.user.id);
+      const category = await storage.getCategory(req.params.id, req.user.claims.sub);
       
       if (!category) {
         return res.status(404).json({ error: "Categoria não encontrada" });
@@ -87,13 +87,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/categories", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
       const data = insertCategorySchema.parse({
         ...req.body,
-        userId: req.user.id,
+        userId: req.user.claims.sub,
       });
       
       const category = await storage.createCategory(data);
@@ -109,12 +109,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/categories/:id", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
       const data = insertCategorySchema.partial().omit({ userId: true, isDefault: true }).parse(req.body);
-      const category = await storage.updateCategory(req.params.id, req.user.id, data);
+      const category = await storage.updateCategory(req.params.id, req.user.claims.sub, data);
       
       if (!category) {
         return res.status(404).json({ error: "Categoria não encontrada" });
@@ -132,11 +132,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.delete("/api/categories/:id", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
-      const success = await storage.deleteCategory(req.params.id, req.user.id);
+      const success = await storage.deleteCategory(req.params.id, req.user.claims.sub);
       
       if (!success) {
         return res.status(404).json({ error: "Categoria não encontrada ou não pode ser excluída" });
@@ -152,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= TRANSACTIONS =============
   app.get("/api/transactions", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
@@ -171,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.endDate = new Date(req.query.endDate as string);
       }
       
-      const transactions = await storage.getTransactions(req.user.id, filters);
+      const transactions = await storage.getTransactions(req.user.claims.sub, filters);
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);
@@ -181,11 +181,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/transactions/:id", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
-      const transaction = await storage.getTransaction(req.params.id, req.user.id);
+      const transaction = await storage.getTransaction(req.params.id, req.user.claims.sub);
       
       if (!transaction) {
         return res.status(404).json({ error: "Transação não encontrada" });
@@ -200,13 +200,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/transactions", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
       const data = insertTransactionSchema.parse({
         ...req.body,
-        userId: req.user.id,
+        userId: req.user.claims.sub,
       });
       
       const transaction = await storage.createTransaction(data);
@@ -222,7 +222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/transactions/:id", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
@@ -232,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recurrenceType: true,
         recurrenceDay: true
       }).parse(req.body);
-      const transaction = await storage.updateTransaction(req.params.id, req.user.id, data);
+      const transaction = await storage.updateTransaction(req.params.id, req.user.claims.sub, data);
       
       if (!transaction) {
         return res.status(404).json({ error: "Transação não encontrada" });
@@ -250,11 +250,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.delete("/api/transactions/:id", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
-      const success = await storage.deleteTransaction(req.params.id, req.user.id);
+      const success = await storage.deleteTransaction(req.params.id, req.user.claims.sub);
       
       if (!success) {
         return res.status(404).json({ error: "Transação não encontrada" });
@@ -270,12 +270,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= RECURRENCE =============
   app.post("/api/transactions/process-recurrence", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
       const targetDate = req.body.targetDate ? new Date(req.body.targetDate) : new Date();
-      const createdCount = await storage.processRecurringTransactions(req.user.id, targetDate);
+      const createdCount = await storage.processRecurringTransactions(req.user.claims.sub, targetDate);
       
       res.json({ 
         success: true, 
@@ -290,11 +290,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/transactions/recurring", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
-      const recurringTransactions = await storage.getRecurringTransactions(req.user.id);
+      const recurringTransactions = await storage.getRecurringTransactions(req.user.claims.sub);
       res.json(recurringTransactions);
     } catch (error) {
       console.error("Error fetching recurring transactions:", error);
@@ -305,14 +305,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= REPORTS =============
   app.get("/api/reports/monthly", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
       const year = parseInt(req.query.year as string) || new Date().getFullYear();
       const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
       
-      const report = await storage.getMonthlyReport(req.user.id, year, month);
+      const report = await storage.getMonthlyReport(req.user.claims.sub, year, month);
       res.json(report);
     } catch (error) {
       console.error("Error generating monthly report:", error);
@@ -322,14 +322,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/reports/weekly", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
       const year = parseInt(req.query.year as string) || new Date().getFullYear();
       const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
       
-      const weeklyData = await storage.getWeeklyData(req.user.id, year, month);
+      const weeklyData = await storage.getWeeklyData(req.user.claims.sub, year, month);
       res.json(weeklyData);
     } catch (error) {
       console.error("Error generating weekly report:", error);
@@ -339,14 +339,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/reports/advanced", async (req, res) => {
     try {
-      if (!req.user?.id) {
+      if (!req.user?.claims?.sub) {
         return res.status(401).json({ error: "Não autenticado" });
       }
       
       const year = parseInt(req.query.year as string) || new Date().getFullYear();
       const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
       
-      const advancedReport = await storage.getAdvancedReport(req.user.id, year, month);
+      const advancedReport = await storage.getAdvancedReport(req.user.claims.sub, year, month);
       res.json(advancedReport);
     } catch (error) {
       console.error("Error generating advanced report:", error);

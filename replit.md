@@ -6,19 +6,32 @@ Comprehensive financial management platform with premium dark-mode design inspir
 **Current State**: Full MVP implementation complete with frontend-backend integration, authentication, and all core features operational.
 
 ## Recent Changes (November 16, 2025)
-- **CRITICAL FIX - Authentication Routes**: Created missing `server/replitAuth.ts` file with complete Replit Auth OIDC setup
-  - Fixed 404 errors on `/api/login`, `/api/callback`, `/api/logout`
-  - Added `isAuthenticated` middleware for protected routes
-  - Implemented `upsertUser` function in storage for auth flow
-  - All navigation now works without 404 errors (verified via E2E tests)
-- **Task 3 Integration Complete**: All pages migrated to backend API endpoints
-  - Dashboard → `/api/reports/advanced`
-  - Reports → `/api/reports/advanced`
-  - Weekly View → `/api/reports/weekly`
-- **Month Alignment Fixed**: Resolved all 0-based vs 1-based month calculation issues using robust Date constructor
-- **Type Safety**: Added TypeScript interfaces (AdvancedReport, WeeklyData, CategoryRanking, MonthlyReport) to shared/schema.ts
-- **Loading States**: Implemented Skeleton components across all pages
-- **Security Hardened**: Backend validates and omits userId, isRecurring, recurrenceType, recurrenceDay from PATCH payloads
+- **CRITICAL FIX - Authentication**: All backend routes now use `req.user.claims.sub` (Replit Auth OIDC standard) instead of `req.user.id`
+  - Fixed 401 Unauthorized errors across all API endpoints
+  - Categories, transactions, and reports now load correctly
+  - Authentication consistent across entire application
+- **CRITICAL FIX - TanStack Query Keys**: Fixed query key format in 3 files to use structured format
+  - Corrected to: `['/api/reports/weekly', { year, month }]` format
+  - Prevents breaking default fetcher which expects structured keys
+  - Affects: weekly-view.tsx, reports.tsx, dashboard.tsx
+- **Calendar-Based Weekly View Implemented**:
+  - Full month calendar grid with clickable days (1-31)
+  - Click any day to open transaction dialog with date pre-filled
+  - Today's date highlighted with ring border
+  - Days with transactions show count badge and total amount
+  - Transaction previews (up to 2) with category color indicators
+  - Month navigation (previous/next) with year rollover
+  - Timezone-safe date handling using YYYY-MM-DD strings
+- **Transaction Creation Dialog Fixed**:
+  - Frontend uses `insertTransactionSchema.omit({ userId: true })` 
+  - Backend adds userId from `req.user.claims.sub` automatically
+  - Added `isRecurring` field to payload based on recurrenceType
+  - Fixed date normalization to strip original form field before spread
+  - Category refetch happens in handleDayClick (removed redundant useEffect)
+- **Cache Invalidation Simplified**: Direct queryKey invalidation for `/api/reports/weekly`
+- **NaN Protection**: Robust Number() coercion for monthTotal and transactionCount
+- **Test IDs Added**: All select options now have data-testid for E2E testing
+- **Security Hardened**: Backend validates and omits sensitive fields from PATCH payloads
 
 ## Project Architecture
 

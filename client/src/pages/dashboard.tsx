@@ -32,7 +32,7 @@ export default function Dashboard() {
   const currentYear = new Date().getFullYear();
 
   const { data: advancedReport, isLoading: reportLoading, error } = useQuery<AdvancedReport>({
-    queryKey: ["/api/reports/advanced", { year: currentYear, month: currentMonth }],
+    queryKey: ['/api/reports/advanced', { year: currentYear, month: currentMonth }],
     retry: false,
   });
 

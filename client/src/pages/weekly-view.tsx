@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,10 +37,12 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { z } from "zod";
 
-const formSchema = insertTransactionSchema.extend({
-  categoryId: z.string().min(1, "Selecione uma categoria"),
-  amount: z.string().min(1, "Digite um valor"),
-});
+const formSchema = insertTransactionSchema
+  .omit({ userId: true })  // Backend adds userId from req.user.claims.sub
+  .extend({
+    categoryId: z.string().min(1, "Selecione uma categoria"),
+    amount: z.string().min(1, "Digite um valor"),
+  });
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -65,12 +67,12 @@ export default function WeeklyView() {
     },
   });
 
-  const { data: weeklyData, isLoading } = useQuery<WeeklyData>({
-    queryKey: ["/api/reports/weekly", { year: selectedYear, month: selectedMonth }],
+  const { data: weeklyData, isLoading} = useQuery<WeeklyData>({
+    queryKey: ['/api/reports/weekly', { year: selectedYear, month: selectedMonth }],
     retry: false,
   });
 
-  const { data: categories } = useQuery<Category[]>({
+  const { data: categories, refetch: refetchCategories } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
     retry: false,
   });
@@ -130,8 +132,11 @@ export default function WeeklyView() {
       recurrenceType: "none",
       recurrenceDay: null,
     });
+    refetchCategories(); // Refetch categories to get latest data
     setOpen(true);
   };
+
+  // Categories are refetched in handleDayClick, no need for additional useEffect
 
   const handleClose = () => {
     setOpen(false);
@@ -141,20 +146,26 @@ export default function WeeklyView() {
 
   const onSubmit = async (data: FormValues) => {
     // Keep date as local date string (YYYY-MM-DD) to avoid timezone shifts
-    const dateParts = data.date.split('-');
+    const dateStr = typeof data.date === 'string' ? data.date : new Date(data.date).toISOString().split('T')[0];
+    const dateParts = dateStr.split('-');
     const year = parseInt(dateParts[0]);
     const month = parseInt(dateParts[1]) - 1;
     const day = parseInt(dateParts[2]);
     const localDate = new Date(year, month, day, 12, 0, 0);
     
+    // Remove original date field and use normalized ISO string
+    const { date: _, ...restData } = data;
+    
     const payload = {
-      ...data,
+      ...restData,
       amount: parseFloat(data.amount),
       date: localDate.toISOString(),
+      isRecurring: data.recurrenceType !== "none",
       recurrenceDay: data.recurrenceType === "monthly" || data.recurrenceType === "quarterly" 
         ? day 
         : null,
     };
+    
     createMutation.mutate(payload);
   };
 
@@ -184,6 +195,11 @@ export default function WeeklyView() {
       days.push(day);
     }
     
+    // Add trailing empty cells to complete full weeks (35 cells total for 5 weeks)
+    while (days.length < 35) {
+      days.push(null);
+    }
+    
     return days;
   }, [selectedMonth, selectedYear]);
 
@@ -206,8 +222,9 @@ export default function WeeklyView() {
     });
   };
 
-  const monthTotal = weeklyData?.monthTotal || 0;
+  const monthTotal = Number(weeklyData?.monthTotal) || 0;
   const weeks = weeklyData?.weeks || [];
+  const transactionCount = weeks.reduce((sum, week) => sum + (Number(week.transactionCount) || 0), 0);
 
   if (isLoading || !weeklyData) {
     return (
@@ -264,7 +281,7 @@ export default function WeeklyView() {
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Transações</p>
             <h3 className="text-3xl font-bold mt-1">
-              {weeks.reduce((sum, week) => sum + week.transactionCount, 0)}
+              {transactionCount}
             </h3>
           </div>
         </div>
@@ -369,7 +386,10 @@ export default function WeeklyView() {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form 
+              onSubmit={form.handleSubmit(onSubmit)} 
+              className="space-y-4"
+            >
               <FormField
                 control={form.control}
                 name="title"
@@ -418,7 +438,8 @@ export default function WeeklyView() {
                       <Input 
                         type="date"
                         data-testid="input-transaction-date"
-                        {...field} 
+                        {...field}
+                        value={typeof field.value === 'string' ? field.value : new Date(field.value).toISOString().split('T')[0]}
                       />
                     </FormControl>
                     <FormMessage />
@@ -448,7 +469,7 @@ export default function WeeklyView() {
                             <div className="flex items-center gap-2">
                               <div 
                                 className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: category.color }}
+                                style={{ backgroundColor: category.color || '#10B981' }}
                               />
                               {category.name}
                             </div>
@@ -474,8 +495,8 @@ export default function WeeklyView() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="paid">Pago</SelectItem>
-                        <SelectItem value="unpaid">Não Pago</SelectItem>
+                        <SelectItem value="paid" data-testid="status-option-paid">Pago</SelectItem>
+                        <SelectItem value="unpaid" data-testid="status-option-unpaid">Não Pago</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -496,11 +517,11 @@ export default function WeeklyView() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="none">Não recorrente</SelectItem>
-                        <SelectItem value="weekly">Semanal</SelectItem>
-                        <SelectItem value="biweekly">Quinzenal</SelectItem>
-                        <SelectItem value="monthly">Mensal</SelectItem>
-                        <SelectItem value="quarterly">Trimestral</SelectItem>
+                        <SelectItem value="none" data-testid="recurrence-option-none">Não recorrente</SelectItem>
+                        <SelectItem value="weekly" data-testid="recurrence-option-weekly">Semanal</SelectItem>
+                        <SelectItem value="biweekly" data-testid="recurrence-option-biweekly">Quinzenal</SelectItem>
+                        <SelectItem value="monthly" data-testid="recurrence-option-monthly">Mensal</SelectItem>
+                        <SelectItem value="quarterly" data-testid="recurrence-option-quarterly">Trimestral</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
