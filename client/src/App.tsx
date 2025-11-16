@@ -38,7 +38,7 @@ function UnauthenticatedRouter() {
   );
 }
 
-export default function App() {
+function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
   
   const sidebarStyle = {
@@ -48,39 +48,43 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <QueryClientProvider client={queryClient}>
-        <div className="flex h-screen items-center justify-center">
-          <div className="text-muted-foreground">Carregando...</div>
-        </div>
-      </QueryClientProvider>
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground">Carregando...</div>
+      </div>
     );
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        {!isAuthenticated ? (
-          <>
-            <UnauthenticatedRouter />
-            <Toaster />
-          </>
-        ) : (
-          <SidebarProvider style={sidebarStyle}>
-            <div className="flex h-screen w-full">
-              <AppSidebar />
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <header className="flex items-center justify-between p-3 border-b bg-card">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                </header>
-                <main className="flex-1 overflow-y-auto bg-background">
-                  <AuthenticatedRouter />
-                </main>
-              </div>
+    <TooltipProvider>
+      {!isAuthenticated ? (
+        <>
+          <UnauthenticatedRouter />
+          <Toaster />
+        </>
+      ) : (
+        <SidebarProvider style={sidebarStyle}>
+          <div className="flex h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <header className="flex items-center justify-between p-3 border-b bg-card">
+                <SidebarTrigger data-testid="button-sidebar-toggle" />
+              </header>
+              <main className="flex-1 overflow-y-auto bg-background">
+                <AuthenticatedRouter />
+              </main>
             </div>
-            <Toaster />
-          </SidebarProvider>
-        )}
-      </TooltipProvider>
+          </div>
+          <Toaster />
+        </SidebarProvider>
+      )}
+    </TooltipProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
     </QueryClientProvider>
   );
 }
