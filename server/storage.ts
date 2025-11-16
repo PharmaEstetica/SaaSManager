@@ -573,6 +573,23 @@ export class DatabaseStorage implements IStorage {
           biweeklyDate.setDate(biweeklyDate.getDate() + 14);
         }
         break;
+      
+      case "quarterly":
+        const quarterlyDay = template.recurrenceDay || templateDate.getDate();
+        
+        for (let quarterOffset = 0; quarterOffset * 3 <= monthsDiff; quarterOffset++) {
+          const date = new Date(startYear, startMonth + (quarterOffset * 3), 1);
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          const lastDay = new Date(year, month + 1, 0).getDate();
+          const actualDay = Math.min(quarterlyDay, lastDay);
+          const occurrenceDate = new Date(year, month, actualDay);
+          
+          if (occurrenceDate >= templateDate && occurrenceDate <= targetDate) {
+            dates.push(occurrenceDate);
+          }
+        }
+        break;
     }
     
     return dates;

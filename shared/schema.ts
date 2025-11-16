@@ -63,10 +63,23 @@ export const transactions = pgTable("transactions", {
   notes: text("notes"),
   // Recurrence settings
   recurrenceType: varchar("recurrence_type", { 
-    enum: ["none", "monthly", "weekly", "biweekly", "monthly_variable"] 
+    enum: ["none", "monthly", "weekly", "biweekly", "monthly_variable", "quarterly"] 
   }).default("none"),
   recurrenceDay: integer("recurrence_day"), // Day of month (1-31) or day of week (0-6)
   isRecurring: boolean("is_recurring").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Monthly financial settings - revenue, accumulated balance
+export const monthlyFinancials = pgTable("monthly_financials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  year: integer("year").notNull(),
+  month: integer("month").notNull(), // 1-12
+  monthlyRevenue: decimal("monthly_revenue", { precision: 12, scale: 2 }).default("0"),
+  accumulatedBalance: decimal("accumulated_balance", { precision: 12, scale: 2 }).default("0"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -75,6 +88,7 @@ export const transactions = pgTable("transactions", {
 export const usersRelations = relations(users, ({ many }) => ({
   categories: many(categories),
   transactions: many(transactions),
+  monthlyFinancials: many(monthlyFinancials),
 }));
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -93,6 +107,13 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
   category: one(categories, {
     fields: [transactions.categoryId],
     references: [categories.id],
+  }),
+}));
+
+export const monthlyFinancialsRelations = relations(monthlyFinancials, ({ one }) => ({
+  user: one(users, {
+    fields: [monthlyFinancials.userId],
+    references: [users.id],
   }),
 }));
 
@@ -127,6 +148,21 @@ export const updateAccountTypeSchema = z.object({
   cnpj: z.string().optional(),
 });
 
+export const insertMonthlyFinancialSchema = createInsertSchema(monthlyFinancials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  monthlyRevenue: z.string().or(z.number()),
+  accumulatedBalance: z.string().or(z.number()).optional(),
+});
+
+export const updateMonthlyFinancialSchema = z.object({
+  monthlyRevenue: z.string().or(z.number()).optional(),
+  accumulatedBalance: z.string().or(z.number()).optional(),
+  notes: z.string().optional(),
+});
+
 // TypeScript types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -137,6 +173,10 @@ export type InsertCategory = z.infer<typeof insertCategorySchema>;
 
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+
+export type MonthlyFinancial = typeof monthlyFinancials.$inferSelect;
+export type InsertMonthlyFinancial = z.infer<typeof insertMonthlyFinancialSchema>;
+export type UpdateMonthlyFinancial = z.infer<typeof updateMonthlyFinancialSchema>;
 
 export type UpdateAccountType = z.infer<typeof updateAccountTypeSchema>;
 
