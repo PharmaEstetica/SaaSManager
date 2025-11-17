@@ -215,15 +215,14 @@ export default function Register() {
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               Já tem uma conta?{" "}
-              <Button
+              <button
                 type="button"
-                variant="link"
-                className="p-0"
+                className="p-0 text-primary hover:underline"
                 onClick={() => setLocation("/login")}
                 data-testid="link-login"
               >
                 Fazer login
-              </Button>
+              </button>
             </div>
           </CardFooter>
         </form>

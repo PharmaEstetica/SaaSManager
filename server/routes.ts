@@ -7,7 +7,7 @@ import {
   updateAccountTypeSchema,
 } from "@shared/schema";
 import { z } from "zod";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, getOidcConfig } from "./replitAuth";
 import localAuthRoutes from "./localAuth";
 
 // Hybrid auth middleware - supports both local auth (session) and Replit Auth (OIDC)
@@ -32,7 +32,6 @@ async function hybridAuth(req: any, res: Response, next: NextFunction) {
       const refreshToken = user.refresh_token;
       if (refreshToken) {
         try {
-          const { getOidcConfig } = await import("./replitAuth");
           const config = await getOidcConfig();
           const client = await import("openid-client");
           const tokenResponse = await client.refreshTokenGrant(config, refreshToken);

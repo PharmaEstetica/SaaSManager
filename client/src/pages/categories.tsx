@@ -121,7 +121,7 @@ export default function Categories() {
   const handleSubmit = (values: FormValues) => {
     const data = {
       ...values,
-      userId: user?.sub || "",
+      userId: user?.id || "",
     };
     
     if (editingCategory) {
@@ -263,10 +263,10 @@ export default function Categories() {
                 <div className="flex items-start gap-3">
                   <div
                     className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: `${category.color}20` }}
+                    style={{ backgroundColor: `${category.color || '#3B82F6'}20` }}
                     data-testid={`icon-category-${category.id}`}
                   >
-                    <FolderKanban className="w-6 h-6" style={{ color: category.color }} />
+                    <FolderKanban className="w-6 h-6" style={{ color: category.color || '#3B82F6' }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold truncate" data-testid={`text-name-${category.id}`}>{category.name}</h3>
@@ -294,10 +294,10 @@ export default function Categories() {
                 <div className="flex items-start gap-3">
                   <div
                     className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: `${category.color}20` }}
+                    style={{ backgroundColor: `${category.color || '#3B82F6'}20` }}
                     data-testid={`icon-category-${category.id}`}
                   >
-                    <FolderKanban className="w-6 h-6" style={{ color: category.color }} />
+                    <FolderKanban className="w-6 h-6" style={{ color: category.color || '#3B82F6' }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold truncate" data-testid={`text-name-${category.id}`}>{category.name}</h3>
